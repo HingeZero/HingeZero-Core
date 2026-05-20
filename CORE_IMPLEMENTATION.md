@@ -11,7 +11,7 @@ The core nonlinearity is defined as:
 ```
 
 Where:
-- `y` is the pre-activation input
+- `h` is the pre-activation input
 - `α` is the balance parameter (typically 0.25)
 
 **Key properties:**
