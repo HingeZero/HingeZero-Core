@@ -1,0 +1,16 @@
+def hinge_phi(h, alpha=0.25):
+    return np.tanh(h) + alpha*np.tanh(2*h)
+
+def hz_recall(W, x0, steps=2,
+              alpha=0.25,
+              eps=0.10,
+              lam=0.02):
+
+    x = x0.copy()
+
+    for _ in range(steps):
+        h = W @ x
+        phi = hinge_phi(h, alpha)
+        x = (1-lam)*x + eps*phi
+
+    return x
