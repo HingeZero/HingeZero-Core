@@ -4,11 +4,11 @@ A deterministic associative memory mechanism built around a **hinge-at-zero nonl
 
 ## Overview
 
-HingeZero treats the neighbourhood around zero as an **active equilibrium region** rather than a passive dead zone. This allows opposing states to balance, hold structure, and resolve instead of collapsing into forced binary outputs.
+HingeZero treats the neighbourhood around zero as an **active equilibrium region** rather than a passive dead zone. This allows opposing states to balance, hold structure, and resolve instead of co-collapsing.
 
 **Mathematical basis:**
 ```
-h(y; α) = tanh(y) + α·tanh(2y)
+h(y; α) = tanh(h) + α·tanh(2h)
 ```
 
 Core implementation is intentionally minimal (~9 executable lines).
