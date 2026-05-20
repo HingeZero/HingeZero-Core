@@ -7,7 +7,7 @@
 The core nonlinearity is defined as:
 
 ```
-h(y; α) = tanh(y) + α·tanh(2y)
+return np.tanh(h) + alpha*np.tanh(2*h)
 ```
 
 Where:
