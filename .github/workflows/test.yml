@@ -25,3 +25,7 @@ jobs:
 
       - name: Run HingeZero deterministic test
         run: python test_hingezero.py
+
+
+      - name: Run HingeZero associative recall test
+        run: python test_associative_recall.py
