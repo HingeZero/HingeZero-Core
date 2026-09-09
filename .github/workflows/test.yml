@@ -29,3 +29,7 @@ jobs:
 
       - name: Run HingeZero associative recall test
         run: python test_associative_recall.py
+
+
+      - name: Run HingeZero strengths benchmark
+        run: python benchmark_hingezero_strengths.py
