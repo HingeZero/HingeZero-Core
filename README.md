@@ -3,33 +3,94 @@
 HingeZero is a deterministic associative-memory mechanism built around a
 **hinge-at-zero nonlinearity**.
 
-The core operator is:
+The canonical HingeZero operator is:
 
-\[
-\phi(h;\alpha)=\tanh(h)+\alpha\tanh(2h)
-\]
+```text
+φ(h; α) = tanh(h) + α·tanh(2h)
+```
 
-with iterative recall:
+The canonical iterative recall update is:
 
-\[
-h_t = Wx_t
-\]
+```text
+h_t = W @ x_t
+φ_t = φ(h_t; α)
+x_{t+1} = (1 - λ)x_t + εφ_t
+```
 
-\[
-x_{t+1}=(1-\lambda)x_t+\epsilon\phi(h_t;\alpha)
-\]
-
-The implementation is intentionally minimal, transparent, and reproducible.
+The reference implementation is intentionally minimal.
 
 ---
 
 ## Overview
 
-HingeZero treats the neighbourhood around zero as an **active equilibrium
-region** rather than forcing every weak or ambiguous state immediately toward
-a hard positive or negative decision.
+HingeZero applies a nonlinear transformation to the associative memory field
+before updating the current state.
 
-The nonlinear operator is:
+The memory field is:
+
+```text
+h = W @ x
+```
+
+The HingeZero nonlinear response is:
+
+```text
+φ(h; α) = tanh(h) + α·tanh(2h)
+```
+
+The state update is:
+
+```text
+x_next = (1 - λ)x + εφ
+```
+
+Combined:
+
+```text
+h_t     = W @ x_t
+φ_t     = tanh(h_t) + α·tanh(2h_t)
+x_{t+1} = (1 - λ)x_t + εφ_t
+```
+
+Equivalent compact form:
+
+```text
+x_{t+1} = (1 - λ)x_t + ε·φ(Wx_t; α)
+```
+
+---
+
+## Canonical HingeZero Core
+
+The following implementation defines the reference HingeZero Core used by this
+repository:
+
+```python
+def hinge_phi(h, alpha=0.25):
+    return np.tanh(h) + alpha*np.tanh(2*h)
+
+def hz_recall(W, x0, steps=2,
+              alpha=0.25,
+              eps=0.10,
+              lam=0.02):
+
+    x = x0.copy()
+
+    for _ in range(steps):
+        h = W @ x
+        phi = hinge_phi(h, alpha)
+        x = (1-lam)*x + eps*phi
+
+    return x
+```
+
+This code should be treated as the canonical reference implementation.
+
+---
+
+## Mathematical Definition
+
+### HingeZero nonlinear operator
 
 ```text
 φ(h; α) = tanh(h) + α·tanh(2h)
@@ -37,150 +98,163 @@ The nonlinear operator is:
 
 where:
 
-- `h` is the local memory field
-- `alpha` controls the contribution of the second nonlinear term
-- `φ(h; α)` is the HingeZero response
-
-During associative recall, the local field is obtained from:
-
 ```text
-h = W @ x
+h       local associative-memory field
+α       weighting of the second nonlinear term
+φ       HingeZero nonlinear response
 ```
 
-and the state is updated by:
+### Associative field
 
 ```text
-x_next = (1 - lam) * x + eps * φ(h; α)
+h_t = W @ x_t
 ```
 
-Therefore the complete HingeZero recurrence is:
+where:
 
 ```text
-h_t     = W @ x_t
+W       associative-memory matrix
+x_t     current state
+h_t     resulting local field
+```
 
-φ_t     = tanh(h_t) + α·tanh(2h_t)
+### State update
 
-x_{t+1} = (1 - λ)x_t + εφ_t
+```text
+x_{t+1} = (1 - λ)x_t + εφ(h_t; α)
+```
+
+where:
+
+```text
+λ       state decay / retention coefficient
+ε       HingeZero update magnitude
+```
+
+Therefore:
+
+```text
+x_{t+1} =
+    (1 - λ)x_t
+    + ε[tanh(Wx_t) + α·tanh(2Wx_t)]
 ```
 
 ---
 
-## Canonical HingeZero Definition
+## Default Parameters
 
-Throughout this repository, the canonical HingeZero nonlinearity is:
-
-```text
-φ(h; α) = tanh(h) + α·tanh(2h)
-```
-
-The canonical recall update is:
+The reference HingeZero Core uses:
 
 ```text
-x_{t+1} = (1 - λ)x_t + ε·φ(Wx_t; α)
+alpha = 0.25
+eps   = 0.10
+lam   = 0.02
+steps = 2
 ```
 
-Default parameters used by the core implementation are:
+or mathematically:
 
 ```text
 α = 0.25
 ε = 0.10
 λ = 0.02
-steps = 2
 ```
 
-These defaults are reference values rather than requirements.
+These are the canonical default values used by the core implementation.
+
+They may be changed experimentally without changing the definition of the
+HingeZero operator itself.
 
 ---
 
-## Core Implementation
+## Core Functions
+
+### `hinge_phi`
 
 ```python
-import numpy as np
-
-
 def hinge_phi(h, alpha=0.25):
-    """
-    Canonical HingeZero nonlinearity.
+    return np.tanh(h) + alpha*np.tanh(2*h)
+```
 
-    φ(h; α) = tanh(h) + α·tanh(2h)
-    """
-    return np.tanh(h) + alpha * np.tanh(2.0 * h)
+Mathematically:
 
+```text
+φ(h; α) = tanh(h) + α·tanh(2h)
+```
 
-def hz_recall(
-    W,
-    x0,
-    steps=2,
-    alpha=0.25,
-    eps=0.10,
-    lam=0.02,
-):
-    """
-    Perform deterministic HingeZero associative recall.
+This is the defining HingeZero nonlinear operator.
 
-    h_t     = W @ x_t
-    φ_t     = φ(h_t; α)
-    x_{t+1} = (1 - λ)x_t + εφ_t
-    """
+---
 
-    x = np.asarray(x0, dtype=float).copy()
+### `hz_recall`
+
+```python
+def hz_recall(W, x0, steps=2,
+              alpha=0.25,
+              eps=0.10,
+              lam=0.02):
+
+    x = x0.copy()
 
     for _ in range(steps):
         h = W @ x
         phi = hinge_phi(h, alpha)
-        x = (1.0 - lam) * x + eps * phi
+        x = (1-lam)*x + eps*phi
 
     return x
 ```
 
-The mathematical operator and Python implementation above should be treated as
-the reference definition of HingeZero Core.
+Each recall iteration performs three operations:
+
+```text
+1. Calculate associative field
+
+   h = W @ x
+
+2. Apply HingeZero
+
+   phi = tanh(h) + alpha*tanh(2*h)
+
+3. Update state
+
+   x = (1-lam)*x + eps*phi
+```
+
+The process repeats for the requested number of steps.
 
 ---
 
 ## Key Properties
 
-- **Deterministic recall**  
-  Given the same memory matrix, initial state, parameters, and numerical
-  environment, HingeZero performs the same update sequence.
+### Deterministic update
 
-- **Nonlinear associative update**  
-  Recall is driven by the nonlinear response of the memory field rather than
-  by a hard threshold alone.
+The HingeZero recall function contains no random operation.
 
-- **Near-zero sensitivity**  
-  The operator retains a continuous response around zero rather than imposing
-  an immediate binary collapse.
+For fixed:
 
-- **Minimal implementation**  
-  The essential recall mechanism requires only a small amount of code.
+```text
+W
+x0
+alpha
+eps
+lam
+steps
+```
 
-- **Reproducible**  
-  The core recall function contains no random sampling or hidden stochastic
-  state.
-
-- **Quantisation compatible**  
-  HingeZero can be investigated with reduced-precision and quantised memory
-  representations, although quantisation behaviour depends on the surrounding
-  implementation.
-
-- **Easy to integrate**  
-  The reference implementation requires only NumPy.
+the same update sequence is produced, subject to normal numerical differences
+between software, hardware, and floating-point implementations.
 
 ---
 
-## Why the Hinge?
+### Nonlinear response
 
-The name **HingeZero** refers to the behaviour of the nonlinear response around
-the zero-field region.
-
-The operator combines two bounded nonlinear components:
+The HingeZero operator combines:
 
 ```text
 tanh(h)
 ```
 
-and:
+with:
 
 ```text
 α·tanh(2h)
@@ -192,133 +266,42 @@ giving:
 φ(h; α) = tanh(h) + α·tanh(2h)
 ```
 
-The second term modifies the response around the origin while preserving a
-bounded nonlinear structure.
+---
 
-For the default:
+### Near-zero response
+
+Both nonlinear terms are centred at zero.
+
+The second term changes the response around the origin:
 
 ```text
-α = 0.25
+α·tanh(2h)
 ```
 
-the operator becomes:
+while retaining a smooth bounded nonlinear structure.
+
+This behaviour is the origin of the name:
 
 ```text
-φ(h) = tanh(h) + 0.25·tanh(2h)
+HingeZero
 ```
 
 ---
 
-## Associative Recall
+### Minimal implementation
 
-HingeZero itself does not define how the memory matrix `W` must be constructed.
-
-Different associative-memory schemes can provide `W`.
-
-Once `W` exists, HingeZero acts on the field:
-
-```text
-h = W @ x
-```
-
-and applies the HingeZero response before updating the current state.
-
-This separation is intentional:
-
-```text
-memory construction  →  W
-query/state           →  x
-memory field          →  h = W @ x
-HingeZero response    →  φ(h; α)
-state update          →  x_next
-```
-
----
-
-## Minimal Example
-
-The following example constructs a simple associative matrix from stored
-patterns and then recalls a perturbed query.
+The essential recall mechanism is deliberately small:
 
 ```python
-import numpy as np
+x = x0.copy()
 
-
-def hinge_phi(h, alpha=0.25):
-    return np.tanh(h) + alpha * np.tanh(2.0 * h)
-
-
-def hz_recall(
-    W,
-    x0,
-    steps=2,
-    alpha=0.25,
-    eps=0.10,
-    lam=0.02,
-):
-    x = np.asarray(x0, dtype=float).copy()
-
-    for _ in range(steps):
-        h = W @ x
-        phi = hinge_phi(h, alpha)
-        x = (1.0 - lam) * x + eps * phi
-
-    return x
-
-
-# ------------------------------------------------------------
-# Example stored patterns
-# ------------------------------------------------------------
-
-patterns = np.array([
-    [ 1,  1, -1, -1,  1, -1],
-    [-1,  1,  1, -1, -1,  1],
-], dtype=float)
-
-
-# ------------------------------------------------------------
-# Simple associative memory matrix
-# ------------------------------------------------------------
-
-W = patterns.T @ patterns
-
-np.fill_diagonal(W, 0.0)
-
-W /= patterns.shape[1]
-
-
-# ------------------------------------------------------------
-# Perturbed query
-# ------------------------------------------------------------
-
-x0 = np.array(
-    [1.0, 0.6, -1.0, -0.5, 1.0, -1.0],
-    dtype=float,
-)
-
-
-# ------------------------------------------------------------
-# HingeZero recall
-# ------------------------------------------------------------
-
-recalled = hz_recall(
-    W,
-    x0,
-    steps=5,
-    alpha=0.25,
-    eps=0.10,
-    lam=0.02,
-)
-
-print("Initial:")
-print(x0)
-
-print("\nRecalled:")
-print(recalled)
+for _ in range(steps):
+    h = W @ x
+    phi = hinge_phi(h, alpha)
+    x = (1-lam)*x + eps*phi
 ```
 
-This example is deliberately small and is intended to demonstrate the recall
-mechanism rather than establish performance claims.
+This makes the core easy to inspect, reproduce, port, and benchmark.
 
 ---
 
@@ -326,188 +309,399 @@ mechanism rather than establish performance claims.
 
 | Parameter | Default | Meaning |
 |---|---:|---|
-| `alpha` | `0.25` | Weight of the `tanh(2h)` component |
-| `eps` | `0.10` | HingeZero update magnitude |
-| `lam` | `0.02` | Retention / decay coefficient |
-| `steps` | `2` | Number of iterative recall updates |
+| `alpha` | `0.25` | Weight of the `tanh(2h)` term |
+| `eps` | `0.10` | Magnitude of the nonlinear update |
+| `lam` | `0.02` | State decay / retention coefficient |
+| `steps` | `2` | Number of recall iterations |
 
-### Alpha
+---
 
-```text
-α
-```
+## Alpha
 
-controls the contribution of the second nonlinear component:
+`alpha` controls the contribution of:
 
 ```text
-α·tanh(2h)
+tanh(2h)
 ```
 
-The canonical operator remains:
+to the HingeZero response.
+
+The operator is:
 
 ```text
 φ(h; α) = tanh(h) + α·tanh(2h)
 ```
 
-### Epsilon
+At the default:
+
+```text
+α = 0.25
+```
+
+this becomes:
+
+```text
+φ(h) = tanh(h) + 0.25·tanh(2h)
+```
+
+---
+
+## Epsilon
+
+`eps` corresponds to:
 
 ```text
 ε
 ```
 
-controls how strongly the HingeZero response contributes during each update.
+and controls how strongly the HingeZero response contributes to the next state.
 
-### Lambda
+```text
+x_{t+1} = (1 - λ)x_t + εφ_t
+```
+
+Default:
+
+```text
+ε = 0.10
+```
+
+---
+
+## Lambda
+
+`lam` corresponds to:
 
 ```text
 λ
 ```
 
-controls how much of the previous state is retained through:
+and appears in:
 
 ```text
 (1 - λ)x_t
 ```
 
-### Steps
+Default:
 
-`steps` determines how many times the deterministic update is applied.
+```text
+λ = 0.02
+```
 
 ---
 
-## Determinism
+## Steps
 
-The HingeZero recall operation contains no intrinsic randomness.
+`steps` controls the number of repeated HingeZero recall updates.
 
-For fixed:
+Default:
+
+```text
+steps = 2
+```
+
+The core algorithm therefore performs:
+
+```text
+x_0
+ ↓
+HZ update
+ ↓
+x_1
+ ↓
+HZ update
+ ↓
+x_2
+```
+
+with the default configuration.
+
+---
+
+## Memory Matrix
+
+HingeZero Core does not require one specific method for constructing `W`.
+
+The memory architecture supplies:
 
 ```text
 W
-x0
-α
-ε
-λ
-steps
 ```
 
-the update trajectory is deterministic, subject to the usual numerical
-differences that can arise between hardware, floating-point formats, and
-software implementations.
-
-Randomness used to generate experimental datasets, initialise test memories,
-or corrupt benchmark queries is separate from the HingeZero recall operator.
-
----
-
-## Quantisation
-
-The HingeZero architecture can be combined with low-bit representations.
-
-Possible implementations include:
+and HingeZero operates on the resulting field:
 
 ```text
-FP32
-FP16
-INT8
-binary / 1-bit storage
-packed-bit memory representations
+h = W @ x
 ```
 
-The nonlinear reference implementation shown in this repository uses NumPy
-floating-point arithmetic.
+This deliberately separates:
 
-Quantised variants may approximate, transform, or separate parts of the
-calculation depending on their architecture.
+```text
+memory construction
+```
 
-See the dedicated HingeZero 1-bit work for specialised implementations.
+from:
+
+```text
+HingeZero recall dynamics
+```
+
+Conceptually:
+
+```text
+stored information
+       ↓
+memory matrix W
+       ↓
+query x
+       ↓
+h = W @ x
+       ↓
+HingeZero φ(h; α)
+       ↓
+updated state
+```
 
 ---
 
-## Design Philosophy
+## Basic Usage
 
-HingeZero Core follows several principles:
+```python
+import numpy as np
 
-### Minimal
 
-The core mechanism should remain small enough to inspect directly.
+def hinge_phi(h, alpha=0.25):
+    return np.tanh(h) + alpha*np.tanh(2*h)
 
-### Explicit
 
-The operator and update equations should be visible rather than hidden behind
-a large framework.
+def hz_recall(W, x0, steps=2,
+              alpha=0.25,
+              eps=0.10,
+              lam=0.02):
 
-### Deterministic
+    x = x0.copy()
 
-Associative recall should not require stochastic sampling.
+    for _ in range(steps):
+        h = W @ x
+        phi = hinge_phi(h, alpha)
+        x = (1-lam)*x + eps*phi
 
-### Modular
+    return x
+```
 
-Memory construction and HingeZero recall are separate components.
+Assuming an associative-memory matrix `W` and an initial query `x0` already
+exist:
 
-### Reproducible
-
-The equations, default parameters, and implementation should correspond
-directly.
+```python
+recalled = hz_recall(
+    W,
+    x0,
+    steps=2,
+    alpha=0.25,
+    eps=0.10,
+    lam=0.02
+)
+```
 
 ---
 
 ## Notation Standard
 
-To prevent ambiguity across implementations and publications, HingeZero uses
-the following notation:
+For consistency across HingeZero code, documentation, experiments, and
+publications, the following notation should be used:
 
 ```text
-x_t        current state
-W          associative memory matrix
-h_t        local memory field
-α          hinge weighting parameter
-ε          update magnitude
-λ          state retention / decay parameter
-φ          HingeZero nonlinear operator
+x       current state
+x0      initial query
+x_t     state at iteration t
+
+W       associative-memory matrix
+
+h       associative-memory field
+h_t     associative-memory field at iteration t
+
+phi     Python variable containing the HingeZero response
+φ       mathematical HingeZero operator
+
+alpha   Python parameter
+α       mathematical alpha parameter
+
+eps     Python parameter
+ε       mathematical epsilon parameter
+
+lam     Python parameter
+λ       mathematical lambda parameter
+
+steps   number of recall iterations
 ```
 
-Canonical equations:
+---
+
+## Canonical Mapping
+
+The Python code:
+
+```python
+h = W @ x
+```
+
+corresponds to:
 
 ```text
-h_t = W @ x_t
+h_t = W x_t
 ```
+
+The Python code:
+
+```python
+phi = hinge_phi(h, alpha)
+```
+
+corresponds to:
 
 ```text
 φ(h_t; α) = tanh(h_t) + α·tanh(2h_t)
 ```
 
-```text
-x_{t+1} = (1 - λ)x_t + ε·φ(h_t; α)
+The Python code:
+
+```python
+x = (1-lam)*x + eps*phi
 ```
 
-Equivalent compact form:
+corresponds to:
 
 ```text
-x_{t+1} =
-    (1 - λ)x_t
-    + ε·φ(Wx_t; α)
+x_{t+1} = (1 - λ)x_t + εφ(h_t; α)
 ```
+
+---
+
+## Determinism
+
+The HingeZero recall mechanism is deterministic.
+
+The following function contains no stochastic operation:
+
+```python
+def hz_recall(W, x0, steps=2,
+              alpha=0.25,
+              eps=0.10,
+              lam=0.02):
+
+    x = x0.copy()
+
+    for _ in range(steps):
+        h = W @ x
+        phi = hinge_phi(h, alpha)
+        x = (1-lam)*x + eps*phi
+
+    return x
+```
+
+Randomness may still be used externally when:
+
+```text
+generating test data
+constructing experimental memories
+adding corruption
+adding noise
+sampling benchmark queries
+```
+
+That randomness belongs to the experiment, not to HingeZero recall itself.
+
+---
+
+## Quantisation
+
+The core definition is independent of a particular storage precision.
+
+The reference Python version uses NumPy floating-point operations.
+
+Experimental implementations can investigate:
+
+```text
+FP32
+FP16
+INT8
+binary storage
+1-bit packed representations
+```
+
+while retaining the same conceptual HingeZero operator or an explicitly
+documented approximation of it.
+
+Quantised variants should clearly state where their implementation differs from
+the canonical floating-point reference.
 
 ---
 
 ## Repository Scope
 
-This repository contains the **HingeZero Core** only.
+This repository contains the **HingeZero Core**.
 
-It is intended to provide:
+Its purpose is to establish:
 
-- the canonical operator
-- the canonical recall equation
-- the minimal Python implementation
-- parameter definitions
-- implementation guidance
-- mathematical notation
+```text
+the canonical operator
+the canonical recurrence
+the default parameters
+the minimal implementation
+the notation standard
+```
 
-Experimental wrappers, specialised memory architectures, tracking systems,
-large-scale retrieval experiments, and application-specific implementations
-should remain separate from the core definition.
+Application-specific systems, wrappers, tracking systems, retrieval engines,
+quantised implementations, and experimental variants should be documented
+separately.
 
-This keeps the reference implementation stable.
+---
+
+## Canonical Definition
+
+Unless explicitly labelled as an experimental or derived variant, HingeZero
+should refer to:
+
+```text
+φ(h; α) = tanh(h) + α·tanh(2h)
+```
+
+with:
+
+```text
+h_t = W @ x_t
+```
+
+and:
+
+```text
+x_{t+1} = (1 - λ)x_t + εφ(h_t; α)
+```
+
+using the reference defaults:
+
+```text
+α = 0.25
+ε = 0.10
+λ = 0.02
+steps = 2
+```
+
+---
+
+## What's Included
+
+This repository contains only the HingeZero core:
+
+- Core implementation
+- Mathematical definition
+- Canonical notation
+- Parameter definitions
+- Recall dynamics
+- Implementation guidance
+
+Experimental extensions should be maintained separately so that the reference
+core remains stable.
 
 ---
 
@@ -521,7 +715,7 @@ https://github.com/HingeZero/HingeZero.py
 
 ### HingeZero-1Bit
 
-Low-bit / packed representation work:
+1-bit / packed-memory implementation:
 
 https://github.com/HingeZero/HingeZero-1Bit
 
@@ -529,7 +723,7 @@ https://github.com/HingeZero/HingeZero-1Bit
 
 ## Citation
 
-If you use HingeZero Core in research, please cite:
+If you use HingeZero in research, please cite:
 
 ```bibtex
 @software{hingezero2026,
@@ -558,30 +752,6 @@ for the complete license terms.
 
 ## Documentation
 
-See:
-
-- `CORE_IMPLEMENTATION.md` — mathematical and implementation details
+- `CORE_IMPLEMENTATION.md` — implementation and mathematical guidance
 - `HingeZero.py` — extended Python implementation
 - `HingeZero-1Bit` — specialised low-bit implementation
-
----
-
-## Canonical Reference
-
-For consistency, all HingeZero implementations should trace their nonlinear
-operator back to:
-
-```text
-φ(h; α) = tanh(h) + α·tanh(2h)
-```
-
-and their standard iterative recall dynamics to:
-
-```text
-h_t = W @ x_t
-x_{t+1} = (1 - λ)x_t + ε·φ(h_t; α)
-```
-
-Unless an implementation explicitly identifies itself as a modified,
-experimental, or derived HingeZero variant, these equations define
-**HingeZero Core**.
