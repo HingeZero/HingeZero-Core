@@ -1,5 +1,7 @@
 # HingeZero Core
 
+**[HingeZero project contents — code, benchmarks, downloads and research](https://github.com/HingeZero/HingeZero-)**
+
 HingeZero is a deterministic associative-memory mechanism built around a
 **hinge-at-zero nonlinearity**.
 
