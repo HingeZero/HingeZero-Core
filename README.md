@@ -1,5 +1,12 @@
 # HingeZero Core
 
+> **Looking for HingeZero Memory — the downloadable offline AI memory application?**
+> **[Get HingeZero Memory](https://github.com/HingeZero/HingeZero-1B-Memory)** ·
+> [Download the desktop preview](https://github.com/HingeZero/HingeZero-1B-Memory/releases/latest) ·
+> [Installation guide](https://github.com/HingeZero/HingeZero-1B-Memory/blob/main/desktop/README.md)
+>
+> HingeZero Memory is a local-first encrypted memory vault with associative retrieval, stored-state Witness verification, an opt-in local API, and optional Ollama integration. Its desktop preview is separate from this minimal mathematical Core. Witness verifies stored identity, not the factual truth of saved information.
+
 **[HingeZero project contents — code, benchmarks, downloads and research](https://github.com/HingeZero/HingeZero-)**
 
 HingeZero is a deterministic associative-memory mechanism built around a
@@ -709,6 +716,13 @@ core remains stable.
 
 ## Related Implementations
 
+### HingeZero Memory Desktop
+
+**[HingeZero-1B-Memory](https://github.com/HingeZero/HingeZero-1B-Memory)** —
+the downloadable, private/offline AI memory application and separate associative-memory research kit.
+[Desktop preview downloads](https://github.com/HingeZero/HingeZero-1B-Memory/releases/latest) ·
+[Quickstart](https://github.com/HingeZero/HingeZero-1B-Memory/blob/main/desktop/README.md)
+
 ### HingeZero.py
 
 Full Python implementation:
@@ -757,3 +771,4 @@ for the complete license terms.
 - `CORE_IMPLEMENTATION.md` — implementation and mathematical guidance
 - `HingeZero.py` — extended Python implementation
 - `HingeZero-1Bit` — specialised low-bit implementation
+- [HingeZero Memory](https://github.com/HingeZero/HingeZero-1B-Memory) — offline desktop application, integration and research
